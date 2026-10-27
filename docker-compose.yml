@@ -1,0 +1,17 @@
+version: '3.8'
+
+services:
+  python-ai:
+    build: ./python-ai
+    ports:
+      - "8000:8080"
+    environment:
+      - UPSTASH_URL=https://causal-marmoset-240640.upstash.io
+      - UPSTASH_TOKEN=ggAAAAAAA6wAAAIgcDKXkvGOtWqorxfb2XFziHXNpIuR66uag-Sc3piGNqp7Hg
+
+  cpp-swarm:
+    build: ./cpp-engines
+    depends_on:
+      - python-ai
+    # Note: The C++ code connects to Upstash directly, 
+    # so it doesn't need to wait for local Python.
