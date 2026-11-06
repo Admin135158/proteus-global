@@ -3,11 +3,12 @@
 #include <curl/curl.h>
 #include <thread>
 #include <chrono>
+#include <cstdlib> // Required for std::getenv
 
-// --- UPSTASH CONFIGURATION ---
-const std::string UPSTASH_URL = "https://causal-marmoset-240640.upstash.io";
-// PASTE YOUR NEW ROTATED TOKEN HERE
-const std::string UPSTASH_TOKEN = "YOUR_NEW_TOKEN_HERE"; 
+// --- RAILWAY ENVIRONMENT CONFIGURATION ---
+// These will be read from the variables you set in the Railway dashboard.
+const std::string UPSTASH_URL = std::getenv("https://causal-marmoset-240640.upstash.io") ? std::getenv("https://causal-marmoset-240640.upstash.io") : "";
+const std::string UPSTASH_TOKEN = std::getenv("gQAAAAAAA6wAAAIgcDI1Y2QxYjc2MTJiMGU0OGM1YjlkMGU1MjU3NzU4ZDEyYg") ? std::getenv("gQAAAAAAA6wAAAIgcDI1Y2QxYjc2MTJiMGU0OGM1YjlkMGU1MjU3NzU4ZDEyYg") : "";
 
 size_t WriteCallback(void* contents, size_t size, size_t nmemb, void* userp) {
     ((std::string*)userp)->append((char*)contents, size * nmemb);
@@ -15,9 +16,6 @@ size_t WriteCallback(void* contents, size_t size, size_t nmemb, void* userp) {
 }
 
 std::string upstashRequest(const std::string& url, const std::string& method, const std::string& body = "") {
-// DEBUG: See exactly what Upstash is returning
-std::cout << "[DEBUG] Upstash GET response: " << response << std::endl;
-
     CURL* curl = curl_easy_init();
     std::string readBuffer;
     if(curl) {
@@ -47,17 +45,26 @@ int main() {
     curl_global_init(CURL_GLOBAL_ALL);
     std::cout << "[C++ NODE] Connecting to Global Upstash Bus..." << std::endl;
 
+    // Safety check
+    if (UPSTASH_URL.empty() || UPSTASH_TOKEN.empty()) {
+        std::cerr << "[FATAL] Missing UPSTASH_URL or UPSTASH_TOKEN environment variables!" << std::endl;
+        return 1;
+    }
+
     int cycle = 0;
     while (true) {
         cycle++;
         
         // 1. SEND HEARTBEAT
-        std::string heartbeat = "{\"node\": \"cpp-node-alpha\", \"cycle\": " + std::to_string(cycle) + ", \"status\": \"online\"}";
+        std::string heartbeat = "{\"node\": \"cpp-node-railway\", \"cycle\": " + std::to_string(cycle) + ", \"status\": \"online\"}";
         upstashRequest(UPSTASH_URL + "/set/proteus:heartbeat", "POST", heartbeat);
         std::cout << "[C++ NODE] Heartbeat sent to Upstash. Cycle: " << cycle << std::endl;
 
         // 2. CHECK FOR COMMANDS
         std::string response = upstashRequest(UPSTASH_URL + "/get/proteus:command", "GET");
+        
+        // DEBUG: See exactly what Upstash is returning
+        std::cout << "[DEBUG] Upstash GET response: " << response << std::endl;
         
         // If the response contains a result that isn't null, we have a command!
         if (response.find("\"result\":") != std::string::npos && response.find("null") == std::string::npos) {
