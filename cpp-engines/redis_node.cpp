@@ -3,12 +3,11 @@
 #include <curl/curl.h>
 #include <thread>
 #include <chrono>
-#include <cstdlib> // Required for std::getenv
 
-// --- RAILWAY ENVIRONMENT CONFIGURATION ---
-// These will be read from the variables you set in the Railway dashboard.
-const std::string UPSTASH_URL = std::getenv("https://causal-marmoset-240640.upstash.io") ? std::getenv("https://causal-marmoset-240640.upstash.io") : "";
-const std::string UPSTASH_TOKEN = std::getenv("gQAAAAAAA6wAAAIgcDI1Y2QxYjc2MTJiMGU0OGM1YjlkMGU1MjU3NzU4ZDEyYg") ? std::getenv("gQAAAAAAA6wAAAIgcDI1Y2QxYjc2MTJiMGU0OGM1YjlkMGU1MjU3NzU4ZDEyYg") : "";
+// --- HARDCODED CONFIGURATION ---
+const std::string UPSTASH_URL = "https://causal-marmoset-240640.upstash.io";
+// PASTE YOUR TOKEN HERE
+const std::string UPSTASH_TOKEN = "gQAAAAAAA6wAAAIgcDI1Y2QxYjc2MTJiMGU0OGM1YjlkMGU1MjU3NzU4ZDEyYg";
 
 size_t WriteCallback(void* contents, size_t size, size_t nmemb, void* userp) {
     ((std::string*)userp)->append((char*)contents, size * nmemb);
@@ -45,9 +44,8 @@ int main() {
     curl_global_init(CURL_GLOBAL_ALL);
     std::cout << "[C++ NODE] Connecting to Global Upstash Bus..." << std::endl;
 
-    // Safety check
-    if (UPSTASH_URL.empty() || UPSTASH_TOKEN.empty()) {
-        std::cerr << "[FATAL] Missing UPSTASH_URL or UPSTASH_TOKEN environment variables!" << std::endl;
+    if (UPSTASH_TOKEN == "gQAAAAAAA6wAAAIgcDI1Y2QxYjc2MTJiMGU0OGM1YjlkMGU1MjU3NzU4ZDEyYg" || UPSTASH_TOKEN.empty()) {
+        std::cerr << "[FATAL] You must hardcode your Upstash token in the C++ file!" << std::endl;
         return 1;
     }
 
@@ -56,23 +54,20 @@ int main() {
         cycle++;
         
         // 1. SEND HEARTBEAT
-        std::string heartbeat = "{\"node\": \"cpp-node-railway\", \"cycle\": " + std::to_string(cycle) + ", \"status\": \"online\"}";
+        std::string heartbeat = "{\"node\": \"cpp-node-fly\", \"cycle\": " + std::to_string(cycle) + ", \"status\": \"online\"}";
         upstashRequest(UPSTASH_URL + "/set/proteus:heartbeat", "POST", heartbeat);
         std::cout << "[C++ NODE] Heartbeat sent to Upstash. Cycle: " << cycle << std::endl;
 
         // 2. CHECK FOR COMMANDS
         std::string response = upstashRequest(UPSTASH_URL + "/get/proteus:command", "GET");
         
-        // DEBUG: See exactly what Upstash is returning
         std::cout << "[DEBUG] Upstash GET response: " << response << std::endl;
         
-        // If the response contains a result that isn't null, we have a command!
         if (response.find("\"result\":") != std::string::npos && response.find("null") == std::string::npos) {
             std::cout << "\n============================================\n";
             std::cout << "[C++ NODE] 🔥 RECEIVED GLOBAL COMMAND:\n" << response << "\n";
             std::cout << "============================================\n\n";
             
-            // Delete the command so we don't run it twice
             upstashRequest(UPSTASH_URL + "/del/proteus:command", "POST");
         }
 
