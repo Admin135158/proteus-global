@@ -1,0 +1,6 @@
+app = "morpheus-swarm"  # Change this to your app name
+primary_region = "iad" # Change to your preferred region
+
+[build]
+  # This tells Fly to look in the cpp-engines subfolder for the Dockerfile
+  dockerfile = "cpp-engines/Dockerfile" 
